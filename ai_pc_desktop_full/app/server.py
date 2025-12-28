@@ -1,5 +1,7 @@
 import json
 import re
+import sys
+import io
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -19,7 +21,15 @@ from app.db import get_conn
 import subprocess
 import platform
 import os
-import sys
+
+# Windows에서 한국어 출력을 위한 인코딩 설정
+if sys.platform.startswith("win"):
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(encoding='utf-8')
+        sys.stderr.reconfigure(encoding='utf-8')
+    else:
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
 app = FastAPI(title="AI PC", version="0.1.0")
 
@@ -240,12 +250,50 @@ def api_search(req: ChatReq):
 @app.post("/open")
 def api_open(req: OpenReq):
     """파일이 있는 폴더를 열고 파일을 선택합니다."""
-    return {"ok": open_in_explorer(req.path)}
+    try:
+        # 경로 정리 (앞뒤 공백 제거)
+        path = req.path.strip()
+        print(f"[API] /open called with path: {repr(path)}")
+        
+        if not path:
+            return {"ok": False, "error": "경로가 비어있습니다", "path": ""}
+        
+        result = open_in_explorer(path)
+        print(f"[API] /open result: {result}")
+        
+        if result:
+            return {"ok": True, "path": path}
+        else:
+            return {"ok": False, "error": "파일 탐색기 열기 실패", "path": path}
+    except Exception as e:
+        print(f"[API] /open error: {e}")
+        import traceback
+        traceback.print_exc()
+        return {"ok": False, "error": f"오류: {str(e)}", "path": req.path if hasattr(req, 'path') else ""}
 
 @app.post("/open-file")
 def api_open_file(req: OpenReq):
     """파일을 기본 애플리케이션으로 직접 엽니다."""
-    return {"ok": open_file(req.path)}
+    try:
+        # 경로 정리 (앞뒤 공백 제거)
+        path = req.path.strip()
+        print(f"[API] /open-file called with path: {repr(path)}")
+        
+        if not path:
+            return {"ok": False, "error": "경로가 비어있습니다", "path": ""}
+        
+        result = open_file(path)
+        print(f"[API] /open-file result: {result}")
+        
+        if result:
+            return {"ok": True, "path": path}
+        else:
+            return {"ok": False, "error": "파일 열기 실패", "path": path}
+    except Exception as e:
+        print(f"[API] /open-file error: {e}")
+        import traceback
+        traceback.print_exc()
+        return {"ok": False, "error": f"오류: {str(e)}", "path": req.path if hasattr(req, 'path') else ""}
 
 @app.get("/indexed-roots")
 def get_indexed_roots():

@@ -1,4 +1,4 @@
-import os, time
+import os, time, sys, io
 import numpy as np
 from typing import Iterable, Dict, Any, List
 from app.config import settings
@@ -7,6 +7,15 @@ from app.extractors import extract_text
 from app.chunker import chunk_text
 from app.embeddings import embed_texts
 from app.faiss_store import FAISSStore
+
+# Windows에서 한국어 출력을 위한 인코딩 설정
+if sys.platform.startswith("win"):
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(encoding='utf-8')
+        sys.stderr.reconfigure(encoding='utf-8')
+    else:
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
 def _iter_files(root: str, exts: List[str]):
     """파일을 순회합니다. exts가 비어있거나 '*'가 포함되어 있으면 모든 파일을 인덱싱합니다."""

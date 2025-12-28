@@ -368,13 +368,11 @@
       <div class="card">
         <h3>📁 파일 인덱싱</h3>
         <div class="muted" style="margin-bottom:12px">여러 경로를 세미콜론(;)으로 구분하여 입력하세요</div>
-        <div class="row">
-          <textarea id="root" placeholder="예: C:\Users\me\Documents&#10;또는 여러 경로: C:\Users\me\Documents;D:\Projects"></textarea>
-          <div style="display:flex;flex-direction:column;gap:8px;min-width:120px">
-            <button class="btn-primary" onclick="doIndex()">Index</button>
-            <button class="btn-secondary" onclick="selectFolder()" style="font-size:12px">폴더 선택</button>
-            <button class="btn-secondary" onclick="addPath()" style="font-size:12px">경로 추가</button>
-          </div>
+        <textarea id="root" placeholder="예: C:\Users\me\Documents&#10;또는 여러 경로: C:\Users\me\Documents;D:\Projects" style="margin-bottom:12px"></textarea>
+        <div class="btn-group">
+          <button class="btn-primary" onclick="doIndex()">📁 Index</button>
+          <button class="btn-secondary" onclick="selectFolder()">📂 폴더 선택</button>
+          <button class="btn-secondary" onclick="addPath()">➕ 경로 추가</button>
         </div>
         <div id="indexStatus" class="status-box"></div>
       </div>
@@ -815,12 +813,13 @@ function renderResults(items, snippets=null, ragSnippets=null){
     items.forEach((it, idx)=>{
       const item = document.createElement('div');
       item.className = 'result-item';
+      const filePath = (it.path || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
       item.innerHTML = `
         <div class="result-item-header">
           <div class="result-item-path">${idx+1}. ${it.path || ''}</div>
           <div style="display:flex;gap:4px">
-            <button class="btn-secondary" onclick="openPath('${(it.path || '').replace(/'/g, "\\'")}')" style="padding:4px 8px;font-size:11px" title="폴더 열기">📁 폴더</button>
-            <button class="btn-primary" onclick="openFile('${(it.path || '').replace(/'/g, "\\'")}')" style="padding:4px 8px;font-size:11px" title="문서 열기">📄 열기</button>
+            <button class="btn-secondary" onclick="openPath('${filePath}')" style="padding:4px 8px;font-size:11px" title="폴더 열기">📁 폴더</button>
+            <button class="btn-primary" onclick="openFile('${filePath}')" style="padding:4px 8px;font-size:11px" title="문서 열기">📄 열기</button>
           </div>
         </div>
       `;
@@ -834,12 +833,13 @@ function renderResults(items, snippets=null, ragSnippets=null){
       const item = document.createElement('div');
       item.className = 'result-item';
       const text = (it.text || '').substring(0, 200);
+      const filePath = (it.path || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
       item.innerHTML = `
         <div class="result-item-header">
           <div class="result-item-path">${idx+1}. ${it.path || ''}</div>
           <div style="display:flex;gap:4px">
-            <button class="btn-secondary" onclick="openPath('${(it.path || '').replace(/'/g, "\\'")}')" style="padding:4px 8px;font-size:11px" title="폴더 열기">📁 폴더</button>
-            <button class="btn-primary" onclick="openFile('${(it.path || '').replace(/'/g, "\\'")}')" style="padding:4px 8px;font-size:11px" title="문서 열기">📄 열기</button>
+            <button class="btn-secondary" onclick="openPath('${filePath}')" style="padding:4px 8px;font-size:11px" title="폴더 열기">📁 폴더</button>
+            <button class="btn-primary" onclick="openFile('${filePath}')" style="padding:4px 8px;font-size:11px" title="문서 열기">📄 열기</button>
           </div>
         </div>
         <div class="result-item-text">${text}${it.text && it.text.length > 200 ? '...' : ''}</div>
@@ -854,12 +854,13 @@ function renderResults(items, snippets=null, ragSnippets=null){
       const item = document.createElement('div');
       item.className = 'result-item';
       const text = (it.text || '').substring(0, 200);
+      const filePath = (it.path || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
       item.innerHTML = `
         <div class="result-item-header">
           <div class="result-item-path">${idx+1}. ${it.path || ''}</div>
           <div style="display:flex;gap:4px">
-            <button class="btn-secondary" onclick="openPath('${(it.path || '').replace(/'/g, "\\'")}')" style="padding:4px 8px;font-size:11px" title="폴더 열기">📁 폴더</button>
-            <button class="btn-primary" onclick="openFile('${(it.path || '').replace(/'/g, "\\'")}')" style="padding:4px 8px;font-size:11px" title="문서 열기">📄 열기</button>
+            <button class="btn-secondary" onclick="openPath('${filePath}')" style="padding:4px 8px;font-size:11px" title="폴더 열기">📁 폴더</button>
+            <button class="btn-primary" onclick="openFile('${filePath}')" style="padding:4px 8px;font-size:11px" title="문서 열기">📄 열기</button>
           </div>
         </div>
         <div class="result-item-text">${text}${it.text && it.text.length > 200 ? '...' : ''}</div>
@@ -874,20 +875,78 @@ function renderResults(items, snippets=null, ragSnippets=null){
 
 async function openPath(path){
   // 파일이 있는 폴더를 열고 파일을 선택
-  await fetch(api('/open'),{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({path})
-  });
+  try {
+    console.log('[UI] Opening folder for:', path);
+    console.log('[UI] Path type:', typeof path);
+    console.log('[UI] Path length:', path ? path.length : 0);
+    
+    if (!path || path.trim() === '') {
+      alert('경로가 비어있습니다.');
+      return;
+    }
+    
+    const response = await fetch(api('/open'),{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({path: path})
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const result = await response.json();
+    console.log('[UI] Open result:', result);
+    
+    if (!result.ok) {
+      const errorMsg = result.error || '알 수 없는 오류';
+      console.error('[UI] Open failed:', errorMsg);
+      alert('폴더 열기 실패: ' + errorMsg);
+    } else {
+      console.log('[UI] Open succeeded');
+    }
+  } catch(e) {
+    console.error('[UI] Open error:', e);
+    alert('폴더 열기 중 오류 발생: ' + e.message);
+  }
 }
 
 async function openFile(path){
   // 파일을 기본 애플리케이션으로 직접 열기
-  await fetch(api('/open-file'),{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({path})
-  });
+  try {
+    console.log('[UI] Opening file:', path);
+    console.log('[UI] Path type:', typeof path);
+    console.log('[UI] Path length:', path ? path.length : 0);
+    
+    if (!path || path.trim() === '') {
+      alert('경로가 비어있습니다.');
+      return;
+    }
+    
+    const response = await fetch(api('/open-file'),{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({path: path})
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const result = await response.json();
+    console.log('[UI] Open file result:', result);
+    
+    if (!result.ok) {
+      const errorMsg = result.error || '알 수 없는 오류';
+      console.error('[UI] Open file failed:', errorMsg);
+      alert('파일 열기 실패: ' + errorMsg);
+    } else {
+      console.log('[UI] Open file succeeded');
+    }
+  } catch(e) {
+    console.error('[UI] Open file error:', e);
+    alert('파일 열기 중 오류 발생: ' + e.message);
+  }
 }
 
 async function doSearch(){
