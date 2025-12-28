@@ -5,57 +5,626 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>AI PC (Web UI)</title>
   <style>
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:18px;max-width:980px}
-    .row{display:flex;gap:10px;flex-wrap:wrap}
-    input,textarea,button{font-size:14px}
-    textarea{width:100%;min-height:64px}
-    button{padding:8px 12px;cursor:pointer}
-    .card{border:1px solid #ddd;border-radius:10px;padding:12px;margin-top:12px}
-    .muted{color:#666;font-size:13px}
-    .paths{white-space:pre-wrap;font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;font-size:12px}
-    .badge{display:inline-block;padding:2px 8px;border:1px solid #ccc;border-radius:999px;font-size:12px;margin-left:6px}
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 350px;
+      gap: 20px;
+    }
+    .main-content {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.06);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 15px rgba(0,0,0,0.1), 0 4px 6px rgba(0,0,0,0.05);
+    }
+    h1 {
+      margin: 0 0 8px 0;
+      color: white;
+      font-size: 32px;
+      font-weight: 700;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .subtitle {
+      color: rgba(255,255,255,0.9);
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+    h2, h3 {
+      margin: 0 0 16px 0;
+      color: #1a202c;
+      font-weight: 600;
+    }
+    h3 {
+      font-size: 18px;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 8px;
+    }
+    .row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: flex-start;
+    }
+    input, textarea, select, button {
+      font-size: 14px;
+      font-family: inherit;
+    }
+    textarea {
+      width: 100%;
+      min-height: 80px;
+      padding: 12px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      resize: vertical;
+      transition: border-color 0.2s;
+    }
+    textarea:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    input[type="text"], input[type="url"], select {
+      padding: 10px 12px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      width: 100%;
+      transition: border-color 0.2s;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    button {
+      padding: 10px 20px;
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+      font-weight: 500;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(102, 126, 234, 0.4);
+    }
+    .btn-secondary {
+      background: #e2e8f0;
+      color: #4a5568;
+    }
+    .btn-secondary:hover {
+      background: #cbd5e0;
+    }
+    .btn-danger {
+      background: #ef4444;
+      color: white;
+    }
+    .btn-danger:hover {
+      background: #dc2626;
+    }
+    .btn-success {
+      background: #10b981;
+      color: white;
+    }
+    .btn-success:hover {
+      background: #059669;
+    }
+    .btn-group {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .status-box {
+      padding: 12px;
+      background: #f7fafc;
+      border-radius: 8px;
+      margin-top: 12px;
+      font-size: 14px;
+    }
+    .status-success {
+      background: #d1fae5;
+      color: #065f46;
+    }
+    .status-error {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+    .status-info {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+    .muted {
+      color: #718096;
+      font-size: 13px;
+    }
+    .paths {
+      white-space: pre-wrap;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      background: #f7fafc;
+      padding: 12px;
+      border-radius: 8px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      background: #e2e8f0;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      margin-left: 6px;
+      color: #4a5568;
+    }
+    .badge-primary {
+      background: #667eea;
+      color: white;
+    }
+    .badge-success {
+      background: #10b981;
+      color: white;
+    }
+    .indexed-path-item {
+      padding: 12px;
+      background: #f7fafc;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      border-left: 4px solid #667eea;
+    }
+    .indexed-path-item:hover {
+      background: #edf2f7;
+    }
+    .settings-section {
+      margin-bottom: 20px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .settings-section:last-child {
+      border-bottom: none;
+    }
+    .form-group {
+      margin-bottom: 16px;
+    }
+    .form-label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 500;
+      color: #4a5568;
+      font-size: 14px;
+    }
+    .form-hint {
+      font-size: 12px;
+      color: #718096;
+      margin-top: 4px;
+    }
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 50px;
+      height: 24px;
+    }
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #cbd5e0;
+      transition: .4s;
+      border-radius: 24px;
+    }
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+    input:checked + .toggle-slider {
+      background-color: #667eea;
+    }
+    input:checked + .toggle-slider:before {
+      transform: translateX(26px);
+    }
+    .model-selector {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .model-selector select {
+      flex: 1;
+    }
+    .refresh-btn {
+      padding: 8px 12px;
+      font-size: 12px;
+    }
+    .llm-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: #f7fafc;
+      border-radius: 6px;
+      font-size: 12px;
+      margin-bottom: 12px;
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+    }
+    .status-dot.inactive {
+      background: #ef4444;
+    }
+    .chat-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .ai-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .scrollable {
+      max-height: 500px;
+      overflow-y: auto;
+    }
+    .answer-box {
+      background: #f7fafc;
+      padding: 16px;
+      border-radius: 8px;
+      margin-top: 12px;
+      white-space: pre-wrap;
+      line-height: 1.6;
+    }
+    .results-box {
+      margin-top: 12px;
+    }
+    .result-item {
+      padding: 12px;
+      background: white;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      border-left: 3px solid #667eea;
+    }
+    .result-item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .result-item-path {
+      font-weight: 600;
+      color: #2d3748;
+      font-size: 13px;
+    }
+    .result-item-text {
+      color: #4a5568;
+      font-size: 12px;
+      margin-top: 6px;
+      line-height: 1.5;
+    }
+    @media (max-width: 1200px) {
+      .container {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 <body>
-  <h2>AI PC (Web UI)</h2>
-  <div class="muted">로컬에서만 실행됩니다. /chat /search /open /index API를 사용합니다.</div>
+  <h1>🤖 AI PC</h1>
+  <div class="subtitle">로컬 파일 검색 및 AI 질의응답 시스템</div>
 
-  <div class="card">
-    <h3>1) Index Folder</h3>
-    <div class="muted" style="margin-bottom:8px">여러 경로를 세미콜론(;)으로 구분하여 입력하세요</div>
-    <div class="row">
-      <textarea id="root" style="flex:1;min-width:260px;min-height:60px" placeholder="예: C:\Users\me\Documents&#10;또는 여러 경로: C:\Users\me\Documents;D:\Projects;E:\Work"></textarea>
-      <div style="display:flex;flex-direction:column;gap:5px">
-        <button onclick="doIndex()">Index</button>
-        <button onclick="selectFolder()" style="font-size:12px">폴더 선택</button>
-        <button onclick="addPath()" style="font-size:12px">경로 추가</button>
+  <div class="container">
+    <!-- 메인 콘텐츠 영역 -->
+    <div class="main-content">
+      <!-- 인덱싱 섹션 -->
+      <div class="card">
+        <h3>📁 파일 인덱싱</h3>
+        <div class="muted" style="margin-bottom:12px">여러 경로를 세미콜론(;)으로 구분하여 입력하세요</div>
+        <div class="row">
+          <textarea id="root" placeholder="예: C:\Users\me\Documents&#10;또는 여러 경로: C:\Users\me\Documents;D:\Projects"></textarea>
+          <div style="display:flex;flex-direction:column;gap:8px;min-width:120px">
+            <button class="btn-primary" onclick="doIndex()">Index</button>
+            <button class="btn-secondary" onclick="selectFolder()" style="font-size:12px">폴더 선택</button>
+            <button class="btn-secondary" onclick="addPath()" style="font-size:12px">경로 추가</button>
+          </div>
+        </div>
+        <div id="indexStatus" class="status-box"></div>
+      </div>
+
+      <!-- Chat / Search 섹션 -->
+      <div class="card">
+        <div class="chat-header">
+          <h3 style="margin:0;border:none">💬 AI Chat</h3>
+          <div id="llmStatus" class="llm-status">
+            <span class="status-dot" id="llmStatusDot"></span>
+            <span id="llmStatusText">로딩 중...</span>
+          </div>
+        </div>
+        <div class="muted" style="margin-bottom:12px">AI가 인덱싱된 파일을 검색하고 답변을 생성합니다</div>
+        <textarea id="q" placeholder="예: 2025 수입 예상치 알려줘, AI 강의자료 요약해줘"></textarea>
+        <div class="btn-group" style="margin-top:12px">
+          <button class="btn-primary" onclick="doChat()">
+            <span id="chatBtnText">🤖 AI Chat</span>
+          </button>
+          <button class="btn-secondary" onclick="doSearch()">🔍 Search Only</button>
+        </div>
+        <div id="answer" class="answer-box" style="display:none"></div>
+        <div id="results" class="results-box" style="display:none"></div>
       </div>
     </div>
-    <div id="indexStatus" class="muted"></div>
-    
-    <div style="margin-top:15px;padding-top:15px;border-top:1px solid #ddd">
-      <h4 style="margin-top:0">인덱싱된 경로</h4>
-      <div id="indexedPaths" class="muted">로딩 중...</div>
-    </div>
-  </div>
 
-  <div class="card">
-    <h3>2) Chat / Search</h3>
-    <textarea id="q" placeholder="예: 어제 수정한 계약서 파일 열어줘"></textarea>
-    <div class="row">
-      <button onclick="doChat()">Chat</button>
-      <button onclick="doSearch()">Search Only</button>
+    <!-- 사이드바 -->
+    <div class="sidebar">
+      <!-- 설정 섹션 -->
+      <div class="card">
+        <h3>⚙️ 설정</h3>
+        <div class="settings-section">
+          <div class="form-group">
+            <label class="form-label">LLM 모드</label>
+            <select id="modeSelect" onchange="onModeChange()">
+              <option value="internal">내부 API (Ollama)</option>
+              <option value="local">로컬 LLM (llama.cpp)</option>
+            </select>
+            <div class="form-hint">사용할 LLM 모드를 선택하세요</div>
+          </div>
+
+          <div id="internalSettings">
+            <div class="form-group">
+              <label class="form-label">API URL</label>
+              <input type="url" id="internalUrl" placeholder="http://127.0.0.1:11434/v1">
+            </div>
+            <div class="form-group">
+              <label class="form-label">API Key</label>
+              <input type="text" id="internalKey" placeholder="ollama">
+            </div>
+            <div class="form-group">
+              <label class="form-label">모델</label>
+              <div class="model-selector">
+                <select id="internalModel">
+                  <option value="">로딩 중...</option>
+                </select>
+                <button class="btn-secondary refresh-btn" onclick="loadOllamaModels()">🔄</button>
+              </div>
+            </div>
+            
+            <div class="form-group" style="margin-top:20px;padding-top:20px;border-top:1px solid #e2e8f0">
+              <label class="form-label" style="display:flex;align-items:center;gap:8px">
+                <input type="checkbox" id="useProxy" onchange="onProxyToggle()" style="width:auto;margin:0">
+                Proxy 사용 (liteproxy → fabrix LLM)
+              </label>
+              <div class="form-hint">liteproxy를 통한 내부 fabrix LLM 호출</div>
+            </div>
+            
+            <div id="proxySettings" style="display:none">
+              <div class="form-group">
+                <label class="form-label">Proxy URL</label>
+                <input type="url" id="proxyUrl" placeholder="http://127.0.0.1:8080/v1">
+                <div class="form-hint">liteproxy 서버 주소</div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Proxy API Key</label>
+                <input type="text" id="proxyKey" placeholder="(선택사항)">
+                <div class="form-hint">필요한 경우 API 키 입력</div>
+              </div>
+            </div>
+          </div>
+
+          <div id="localSettings" style="display:none">
+            <div class="form-group">
+              <label class="form-label">모델 경로</label>
+              <input type="text" id="localPath" placeholder="./models/model.gguf">
+            </div>
+          </div>
+
+          <button class="btn-success" onclick="saveSettings()" style="width:100%;margin-top:12px">💾 설정 저장</button>
+        </div>
+      </div>
+
+      <!-- 인덱싱된 경로 섹션 -->
+      <div class="card">
+        <h3>📂 인덱싱된 경로</h3>
+        <div id="indexedPaths" class="scrollable">
+          <div class="muted">로딩 중...</div>
+        </div>
+      </div>
     </div>
-    <div id="answer" class="card" style="display:none"></div>
-    <div id="results" class="card" style="display:none"></div>
   </div>
 
 <script>
 const api = (path) => `${location.origin}${path}`;
 
-// 페이지 로드 시 인덱싱된 경로 목록 불러오기
-window.addEventListener('DOMContentLoaded', loadIndexedPaths);
+// 페이지 로드 시 초기화
+window.addEventListener('DOMContentLoaded', () => {
+  loadSettings();
+  loadIndexedPaths();
+  loadOllamaModels();
+  updateLLMStatus();
+});
 
+// 설정 로드
+async function loadSettings() {
+  try {
+    const r = await fetch(api('/settings'));
+    const j = await r.json();
+    
+    document.getElementById('modeSelect').value = j.mode || 'internal';
+    document.getElementById('internalUrl').value = j.internal_base_url || '';
+    document.getElementById('internalKey').value = j.internal_api_key || '';
+    document.getElementById('internalModel').value = j.internal_model || '';
+    document.getElementById('localPath').value = j.local_gguf_path || '';
+    document.getElementById('useProxy').checked = j.use_proxy || false;
+    document.getElementById('proxyUrl').value = j.proxy_url || '';
+    document.getElementById('proxyKey').value = j.proxy_api_key || '';
+    
+    onModeChange();
+    onProxyToggle();
+  } catch(e) {
+    console.error('설정 로드 실패:', e);
+  }
+}
+
+// 모드 변경
+function onModeChange() {
+  const mode = document.getElementById('modeSelect').value;
+  const internalSettings = document.getElementById('internalSettings');
+  const localSettings = document.getElementById('localSettings');
+  
+  if (mode === 'internal') {
+    internalSettings.style.display = 'block';
+    localSettings.style.display = 'none';
+  } else {
+    internalSettings.style.display = 'none';
+    localSettings.style.display = 'block';
+  }
+  updateLLMStatus();
+}
+
+// Proxy 토글
+function onProxyToggle() {
+  const useProxy = document.getElementById('useProxy').checked;
+  const proxySettings = document.getElementById('proxySettings');
+  proxySettings.style.display = useProxy ? 'block' : 'none';
+  updateLLMStatus();
+}
+
+// Ollama 모델 목록 로드
+async function loadOllamaModels() {
+  const select = document.getElementById('internalModel');
+  select.innerHTML = '<option value="">로딩 중...</option>';
+  
+  try {
+    const r = await fetch(api('/ollama-models'));
+    const j = await r.json();
+    
+    if (j.available && j.models && j.models.length > 0) {
+      select.innerHTML = j.models.map(m => 
+        `<option value="${m}">${m}</option>`
+      ).join('');
+      
+      // 현재 설정된 모델 선택
+      const currentModel = document.getElementById('internalModel').getAttribute('data-current') || 
+                          document.getElementById('internalModel').value;
+      if (currentModel) {
+        select.value = currentModel;
+      }
+    } else {
+      select.innerHTML = '<option value="">모델 없음 (Ollama 서버 확인 필요)</option>';
+    }
+  } catch(e) {
+    select.innerHTML = '<option value="">로드 실패</option>';
+    console.error('모델 목록 로드 실패:', e);
+  }
+}
+
+// 설정 저장
+async function saveSettings() {
+  const mode = document.getElementById('modeSelect').value;
+  const settings = {
+    mode: mode,
+    internal_base_url: document.getElementById('internalUrl').value,
+    internal_api_key: document.getElementById('internalKey').value,
+    internal_model: document.getElementById('internalModel').value,
+    local_gguf_path: document.getElementById('localPath').value,
+    use_proxy: document.getElementById('useProxy').checked,
+    proxy_url: document.getElementById('proxyUrl').value,
+    proxy_api_key: document.getElementById('proxyKey').value
+  };
+  
+  try {
+    const r = await fetch(api('/settings'), {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(settings)
+    });
+    const j = await r.json();
+    
+    if (j.success) {
+      alert('설정이 저장되었습니다.\n변경사항을 적용하려면 서버를 재시작하세요.');
+      updateLLMStatus();
+    } else {
+      alert('설정 저장 실패: ' + (j.error || '알 수 없는 오류'));
+    }
+  } catch(e) {
+    alert('설정 저장 중 오류: ' + e.message);
+  }
+}
+
+// LLM 상태 업데이트
+async function updateLLMStatus() {
+  const statusEl = document.getElementById('llmStatusText');
+  const statusDot = document.getElementById('llmStatusDot');
+  const mode = document.getElementById('modeSelect').value;
+  
+  if (mode === 'internal') {
+    const model = document.getElementById('internalModel').value;
+    if (model) {
+      statusEl.textContent = `Ollama: ${model}`;
+      statusDot.classList.remove('inactive');
+    } else {
+      statusEl.textContent = '모델 미선택';
+      statusDot.classList.add('inactive');
+    }
+  } else {
+    const path = document.getElementById('localPath').value;
+    if (path) {
+      statusEl.textContent = '로컬 LLM';
+      statusDot.classList.remove('inactive');
+    } else {
+      statusEl.textContent = '모델 경로 없음';
+      statusDot.classList.add('inactive');
+    }
+  }
+}
+
+// 인덱싱된 경로 로드
 async function loadIndexedPaths(){
   try {
     const r = await fetch(api('/indexed-roots'));
@@ -73,24 +642,21 @@ function renderIndexedPaths(roots){
     return;
   }
   
-  let html = '<div style="display:flex;flex-direction:column;gap:8px">';
+  let html = '';
   roots.forEach(root => {
     const date = new Date(root.indexed_at * 1000).toLocaleString('ko-KR');
     html += `
-      <div style="display:flex;align-items:center;gap:10px;padding:8px;background:#f9f9f9;border-radius:4px">
-        <div style="flex:1">
-          <div style="font-weight:bold">${root.root_path}</div>
-          <div style="font-size:12px;color:#666">
-            파일: ${root.file_count} | 청크: ${root.chunk_count} | 인덱싱: ${date}
-          </div>
+      <div class="indexed-path-item">
+        <div style="font-weight:600;margin-bottom:6px;word-break:break-all">${root.root_path}</div>
+        <div style="font-size:11px;color:#718096;margin-bottom:8px">
+          파일: ${root.file_count} | 청크: ${root.chunk_count}<br/>
+          ${date}
         </div>
-        <button onclick="deletePath('${root.root_path.replace(/'/g, "\\'")}')" 
-                style="background:#ff4444;color:white;border:none;padding:4px 8px;border-radius:4px;cursor:pointer"
-                title="삭제">✕</button>
+        <button class="btn-danger" onclick="deletePath('${root.root_path.replace(/'/g, "\\'")}')" 
+                style="width:100%;padding:6px;font-size:12px">삭제</button>
       </div>
     `;
   });
-  html += '</div>';
   el.innerHTML = html;
 }
 
@@ -98,6 +664,10 @@ async function deletePath(rootPath){
   if(!confirm(`정말로 "${rootPath}" 경로의 인덱싱 데이터를 삭제하시겠습니까?`)){
     return;
   }
+  
+  const statusEl = document.getElementById('indexStatus');
+  statusEl.className = 'status-box status-info';
+  statusEl.textContent = '삭제 중...';
   
   try {
     const r = await fetch(api('/delete-path'), {
@@ -107,27 +677,31 @@ async function deletePath(rootPath){
     });
     const j = await r.json();
     if(j.deleted){
-      alert('삭제 완료: ' + j.deleted_files + '개 파일, ' + j.deleted_chunks + '개 청크');
-      loadIndexedPaths(); // 목록 새로고침
+      statusEl.className = 'status-box status-success';
+      statusEl.textContent = `삭제 완료: ${j.deleted_files || 0}개 파일, ${j.deleted_chunks || 0}개 청크 삭제됨`;
+      loadIndexedPaths();
+      setTimeout(() => {
+        statusEl.textContent = '';
+        statusEl.className = 'status-box';
+      }, 3000);
     } else {
-      alert('삭제 실패: ' + (j.error || j.message || '알 수 없는 오류'));
+      statusEl.className = 'status-box status-error';
+      statusEl.textContent = `삭제 실패: ${j.error || j.message || '알 수 없는 오류'}`;
     }
   } catch(e) {
-    alert('삭제 중 오류 발생: ' + e.message);
+    statusEl.className = 'status-box status-error';
+    statusEl.textContent = `삭제 중 오류 발생: ${e.message}`;
   }
 }
 
 async function selectFolder(){
   const statusEl = document.getElementById('indexStatus');
-  const originalText = statusEl.textContent;
+  statusEl.className = 'status-box status-info';
+  statusEl.textContent = '폴더 선택 대화상자를 여는 중...';
   
   try {
-    // 로딩 표시
-    statusEl.textContent = '폴더 선택 대화상자를 여는 중... (새 창이 열릴 수 있습니다)';
-    
-    // 타임아웃 설정 (호환성 개선)
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 120000); // 2분
+    const timeoutId = setTimeout(() => controller.abort(), 120000);
     
     const r = await fetch(api('/select-folder'), {
       signal: controller.signal
@@ -142,11 +716,12 @@ async function selectFolder(){
     const j = await r.json();
     
     if(j.error){
-      statusEl.innerHTML = '<span style="color:orange">경고: ' + j.error + '<br/>경로를 직접 입력해주세요.</span>';
+      statusEl.className = 'status-box status-error';
+      statusEl.textContent = '경고: ' + j.error;
       alert('폴더 선택 실패: ' + j.error + '\n\n경로를 직접 입력해주세요.');
     } else if(j.cancelled){
-      statusEl.textContent = originalText || '';
-      // 취소됨 - 아무것도 하지 않음
+      statusEl.textContent = '';
+      statusEl.className = 'status-box';
     } else if(j.path){
       const root = document.getElementById('root');
       const current = root.value.trim();
@@ -155,16 +730,18 @@ async function selectFolder(){
       } else {
         root.value = current + j.path;
       }
+      statusEl.className = 'status-box status-success';
       statusEl.textContent = '경로가 추가되었습니다: ' + j.path;
-      // 인덱싱된 경로 목록 새로고침
       loadIndexedPaths();
     }
   } catch(e) {
     if(e.name === 'AbortError'){
-      statusEl.innerHTML = '<span style="color:red">폴더 선택이 시간 초과되었습니다.<br/>경로를 직접 입력해주세요.</span>';
+      statusEl.className = 'status-box status-error';
+      statusEl.textContent = '폴더 선택이 시간 초과되었습니다.';
       alert('폴더 선택이 시간 초과되었습니다.\n\n경로를 직접 입력하거나, 파일 탐색기에서 경로를 복사하여 붙여넣으세요.');
     } else {
-      statusEl.innerHTML = '<span style="color:red">오류: ' + e.message + '</span>';
+      statusEl.className = 'status-box status-error';
+      statusEl.textContent = '오류: ' + e.message;
       alert('폴더 선택 중 오류: ' + e.message + '\n\n경로를 직접 입력해주세요.');
     }
   }
@@ -186,7 +763,8 @@ async function doIndex(){
     return;
   }
   const el = document.getElementById('indexStatus');
-  el.textContent = "Indexing...";
+  el.className = 'status-box status-info';
+  el.textContent = "인덱싱 중...";
   try {
     const r = await fetch(api('/index'),{
       method:'POST',
@@ -195,21 +773,23 @@ async function doIndex(){
     });
     const j = await r.json();
     if(j.error){
-      el.innerHTML = "<span style='color:red'>오류: " + j.error + "</span>";
+      el.className = 'status-box status-error';
+      el.textContent = "오류: " + j.error;
     } else if(j.summary){
+      el.className = 'status-box status-success';
       el.innerHTML = "<b>인덱싱 완료</b><br/>" +
         "경로 수: " + j.summary.total_roots + "<br/>" +
         "파일: " + j.summary.total_files + "<br/>" +
         "청크: " + j.summary.total_chunks + "<br/>" +
-        "벡터: " + j.summary.total_vectors + "<br/>" +
-        "<details><summary>상세 결과</summary><pre>" + JSON.stringify(j.results, null, 2) + "</pre></details>";
-      // 인덱싱된 경로 목록 새로고침
+        "벡터: " + j.summary.total_vectors;
       loadIndexedPaths();
     } else {
+      el.className = 'status-box status-error';
       el.textContent = JSON.stringify(j, null, 2);
     }
   } catch(e) {
-    el.innerHTML = "<span style='color:red'>오류: " + e.message + "</span>";
+    el.className = 'status-box status-error';
+    el.textContent = "오류: " + e.message;
   }
 }
 
@@ -217,90 +797,93 @@ function renderResults(items, snippets=null, ragSnippets=null){
   const box = document.getElementById('results');
   if((!items || items.length===0) && (!snippets || snippets.length===0) && (!ragSnippets || ragSnippets.length===0)){
     box.style.display='block';
-    box.innerHTML = "<b>Results</b><div class='muted'>No results.</div>";
+    box.innerHTML = "<div class='muted'>검색 결과가 없습니다.</div>";
     return;
   }
   box.style.display='block';
   
-  let html = "<b>Results</b>";
-  if(items && items.length > 0) html += ` <span class='badge'>파일: ${items.length}</span>`;
-  if(snippets && snippets.length > 0) html += ` <span class='badge'>키워드: ${snippets.length}</span>`;
-  if(ragSnippets && ragSnippets.length > 0) html += ` <span class='badge'>의미: ${ragSnippets.length}</span>`;
-  box.innerHTML = html;
+  let html = "<h4 style='margin-top:0'>검색 결과</h4>";
+  if(items && items.length > 0) html += `<span class='badge badge-primary'>파일: ${items.length}</span>`;
+  if(snippets && snippets.length > 0) html += `<span class='badge badge-success'>키워드: ${snippets.length}</span>`;
+  if(ragSnippets && ragSnippets.length > 0) html += `<span class='badge'>의미: ${ragSnippets.length}</span>`;
   
-  const ul = document.createElement('div');
-  ul.className='paths';
+  const resultsContainer = document.createElement('div');
+  resultsContainer.style.marginTop = '12px';
   
   // 파일 결과
   if(items && items.length > 0){
-    const fileHeader = document.createElement('div');
-    fileHeader.style.marginTop='10px';
-    fileHeader.style.fontWeight='bold';
-    fileHeader.textContent = '파일 검색 결과:';
-    ul.appendChild(fileHeader);
-    
     items.forEach((it, idx)=>{
-      const row = document.createElement('div');
-      row.style.marginTop='5px';
-      const p = it.path || '';
-      row.innerHTML = `${idx+1}. ${p}  `;
-      const b1 = document.createElement('button');
-      b1.textContent = "Open";
-      b1.onclick = ()=>openPath(p);
-      row.appendChild(b1);
-      ul.appendChild(row);
+      const item = document.createElement('div');
+      item.className = 'result-item';
+      item.innerHTML = `
+        <div class="result-item-header">
+          <div class="result-item-path">${idx+1}. ${it.path || ''}</div>
+          <div style="display:flex;gap:4px">
+            <button class="btn-secondary" onclick="openPath('${(it.path || '').replace(/'/g, "\\'")}')" style="padding:4px 8px;font-size:11px" title="폴더 열기">📁 폴더</button>
+            <button class="btn-primary" onclick="openFile('${(it.path || '').replace(/'/g, "\\'")}')" style="padding:4px 8px;font-size:11px" title="문서 열기">📄 열기</button>
+          </div>
+        </div>
+      `;
+      resultsContainer.appendChild(item);
     });
   }
   
-  // Chunk 결과 (키워드 매칭)
+  // Chunk 결과
   if(snippets && snippets.length > 0){
-    const chunkHeader = document.createElement('div');
-    chunkHeader.style.marginTop='15px';
-    chunkHeader.style.fontWeight='bold';
-    chunkHeader.textContent = '내용 검색 결과 (키워드 매칭):';
-    ul.appendChild(chunkHeader);
-    
     snippets.forEach((it, idx)=>{
-      const row = document.createElement('div');
-      row.style.marginTop='8px';
-      row.style.padding='8px';
-      row.style.backgroundColor='#f5f5f5';
-      row.style.borderRadius='4px';
-      const p = it.path || '';
-      const text = (it.text || '').substring(0, 300);
-      row.innerHTML = `<div><b>${idx+1}. ${p}</b> <button onclick="openPath('${p}')">Open</button></div>` +
-        `<div style='margin-top:4px;font-size:12px;color:#555'>${text}${it.text && it.text.length > 300 ? '...' : ''}</div>`;
-      ul.appendChild(row);
+      const item = document.createElement('div');
+      item.className = 'result-item';
+      const text = (it.text || '').substring(0, 200);
+      item.innerHTML = `
+        <div class="result-item-header">
+          <div class="result-item-path">${idx+1}. ${it.path || ''}</div>
+          <div style="display:flex;gap:4px">
+            <button class="btn-secondary" onclick="openPath('${(it.path || '').replace(/'/g, "\\'")}')" style="padding:4px 8px;font-size:11px" title="폴더 열기">📁 폴더</button>
+            <button class="btn-primary" onclick="openFile('${(it.path || '').replace(/'/g, "\\'")}')" style="padding:4px 8px;font-size:11px" title="문서 열기">📄 열기</button>
+          </div>
+        </div>
+        <div class="result-item-text">${text}${it.text && it.text.length > 200 ? '...' : ''}</div>
+      `;
+      resultsContainer.appendChild(item);
     });
   }
   
-  // RAG 결과 (의미 매칭)
+  // RAG 결과
   if(ragSnippets && ragSnippets.length > 0){
-    const ragHeader = document.createElement('div');
-    ragHeader.style.marginTop='15px';
-    ragHeader.style.fontWeight='bold';
-    ragHeader.textContent = '내용 검색 결과 (의미 매칭):';
-    ul.appendChild(ragHeader);
-    
     ragSnippets.forEach((it, idx)=>{
-      const row = document.createElement('div');
-      row.style.marginTop='8px';
-      row.style.padding='8px';
-      row.style.backgroundColor='#e8f4f8';
-      row.style.borderRadius='4px';
-      const p = it.path || '';
-      const text = (it.text || '').substring(0, 300);
-      row.innerHTML = `<div><b>${idx+1}. ${p}</b> <button onclick="openPath('${p}')">Open</button></div>` +
-        `<div style='margin-top:4px;font-size:12px;color:#555'>${text}${it.text && it.text.length > 300 ? '...' : ''}</div>`;
-      ul.appendChild(row);
+      const item = document.createElement('div');
+      item.className = 'result-item';
+      const text = (it.text || '').substring(0, 200);
+      item.innerHTML = `
+        <div class="result-item-header">
+          <div class="result-item-path">${idx+1}. ${it.path || ''}</div>
+          <div style="display:flex;gap:4px">
+            <button class="btn-secondary" onclick="openPath('${(it.path || '').replace(/'/g, "\\'")}')" style="padding:4px 8px;font-size:11px" title="폴더 열기">📁 폴더</button>
+            <button class="btn-primary" onclick="openFile('${(it.path || '').replace(/'/g, "\\'")}')" style="padding:4px 8px;font-size:11px" title="문서 열기">📄 열기</button>
+          </div>
+        </div>
+        <div class="result-item-text">${text}${it.text && it.text.length > 200 ? '...' : ''}</div>
+      `;
+      resultsContainer.appendChild(item);
     });
   }
   
-  box.appendChild(ul);
+  box.innerHTML = html;
+  box.appendChild(resultsContainer);
 }
 
 async function openPath(path){
+  // 파일이 있는 폴더를 열고 파일을 선택
   await fetch(api('/open'),{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({path})
+  });
+}
+
+async function openFile(path){
+  // 파일을 기본 애플리케이션으로 직접 열기
+  await fetch(api('/open-file'),{
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body: JSON.stringify({path})
@@ -310,6 +893,11 @@ async function openPath(path){
 async function doSearch(){
   const message = document.getElementById('q').value.trim();
   if(!message) return;
+  
+  const resultsEl = document.getElementById('results');
+  resultsEl.style.display = 'block';
+  resultsEl.innerHTML = '<div class="muted">검색 중...</div>';
+  
   const r = await fetch(api('/search'),{
     method:'POST',
     headers:{'Content-Type':'application/json'},
@@ -326,9 +914,13 @@ async function doChat(){
     alert('질문을 입력해주세요');
     return;
   }
+  
   const a = document.getElementById('answer');
+  const resultsEl = document.getElementById('results');
   a.style.display='block';
-  a.innerHTML = "<b>Answer</b><div style='white-space:pre-wrap;margin-top:6px'>처리 중...</div>";
+  resultsEl.style.display='block';
+  a.innerHTML = "<div class='muted'>🤖 AI가 답변을 생성하는 중...</div>";
+  resultsEl.innerHTML = '<div class="muted">검색 중...</div>';
   
   try {
     const r = await fetch(api('/chat'),{
@@ -344,7 +936,20 @@ async function doChat(){
     const j = await r.json();
     
     // 답변 표시
-    let answerHtml = "<b>Answer</b><div style='white-space:pre-wrap;margin-top:6px'>";
+    let answerHtml = "<h4 style='margin-top:0'>🤖 AI 답변</h4>";
+    
+    // 모델 정보 표시
+    if(j.model_info){
+      const modelInfo = j.model_info;
+      const modelName = modelInfo.model || 'unknown';
+      const modeText = modelInfo.mode === 'internal' ? 'Ollama' : '로컬 LLM';
+      const statusText = modelInfo.using_llm ? '✅ LLM 사용 중' : '❌ LLM 미사용';
+      answerHtml += `<div style='font-size:12px;color:#718096;margin-bottom:8px;padding:6px;background:#f7fafc;border-radius:6px'>
+        ${statusText} | ${modeText}: ${modelName}
+      </div>`;
+    }
+    
+    answerHtml += "<div>";
     if(j.answer){
       answerHtml += j.answer;
     } else {
@@ -352,28 +957,27 @@ async function doChat(){
     }
     answerHtml += "</div>";
     
-    // 오류 메시지 확인
     if(j.error){
-      answerHtml += "<div style='color:red;margin-top:8px'>오류: " + j.error + "</div>";
+      answerHtml += "<div style='color:#ef4444;margin-top:8px;padding:8px;background:#fee2e2;border-radius:6px'>오류: " + j.error + "</div>";
     }
     
     a.innerHTML = answerHtml;
     
-    // 결과 표시 (chunk 내용 포함)
+    // 결과 표시
     renderResults(j.results||[], j.snippets||[], j.rag_snippets||[]);
     
-    // if action exists, show quick button
+    // 파일 열기 액션
     if(j.action && j.action.path){
       const btn = document.createElement('button');
-      btn.textContent = "Open suggested path";
-      btn.style.marginTop='8px';
+      btn.className = 'btn-primary';
+      btn.textContent = "📂 제안된 파일 열기";
+      btn.style.marginTop='12px';
       btn.onclick = ()=>openPath(j.action.path);
-      a.appendChild(document.createElement('div'));
       a.appendChild(btn);
     }
   } catch(e) {
-    a.innerHTML = "<b>Answer</b><div style='color:red;margin-top:6px'>오류 발생: " + e.message + 
-      "<br/><small>내부 API 서버가 실행 중인지 확인하세요. (.env의 INTERNAL_BASE_URL 설정 확인)</small></div>";
+    a.innerHTML = "<div style='color:#ef4444;padding:12px;background:#fee2e2;border-radius:8px'>오류 발생: " + e.message + 
+      "<br/><small>LLM 서버가 실행 중인지 확인하세요. 설정에서 모델을 확인하세요.</small></div>";
     console.error('Chat error:', e);
   }
 }

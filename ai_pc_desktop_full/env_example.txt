@@ -9,7 +9,9 @@ DATA_DIR=./data
 SQLITE_PATH=./data/meta.db
 
 # 인덱싱 설정
-INDEX_EXTS=.txt,.md,.pdf,.docx,.xlsx
+# 전체 파일 인덱싱: INDEX_EXTS=* 또는 INDEX_EXTS=all
+# 특정 확장자만: INDEX_EXTS=.txt,.md,.pdf,.docx,.xlsx,.msg,.pptx
+INDEX_EXTS=*
 CHUNK_SIZE=900
 CHUNK_OVERLAP=150
 

@@ -9,18 +9,40 @@ from app.embeddings import embed_texts
 from app.faiss_store import FAISSStore
 
 def _iter_files(root: str, exts: List[str]):
+    """파일을 순회합니다. exts가 비어있거나 '*'가 포함되어 있으면 모든 파일을 인덱싱합니다."""
+    # 전체 파일 인덱싱 모드 확인
+    index_all = not exts or '*' in exts or 'all' in exts
+    
+    # 제외할 디렉토리 목록 확장
+    skip_dirs = {".git", "node_modules", "__pycache__", ".venv", "venv", 
+                 "AppData", "Program Files", "Program Files (x86)", 
+                 "Windows", "$Recycle.Bin", "System Volume Information"}
+    
     for dirpath, dirnames, filenames in os.walk(root):
-        # skip common heavy dirs
-        dirnames[:] = [d for d in dirnames if d not in (".git","node_modules","__pycache__")]
+        # 제외할 디렉토리 필터링
+        dirnames[:] = [d for d in dirnames if d not in skip_dirs]
+        
         for fn in filenames:
             p = os.path.join(dirpath, fn)
-            ext = os.path.splitext(fn)[1].lower()
-            if ext in exts:
+            # 숨김 파일 제외 (선택적)
+            if fn.startswith('.'):
+                continue
+                
+            if index_all:
                 yield p
+            else:
+                ext = os.path.splitext(fn)[1].lower()
+                if ext in exts:
+                    yield p
 
 def index_folder(root: str) -> Dict[str, Any]:
     root = os.path.abspath(root)  # 정규화된 경로 사용
-    exts = [e.strip().lower() for e in settings.index_exts.split(",") if e.strip()]
+    # 확장자 파싱: 빈 문자열이거나 '*' 또는 'all'이면 전체 파일 인덱싱
+    index_exts_str = settings.index_exts.strip()
+    if not index_exts_str or index_exts_str.lower() in ('*', 'all', 'all_files'):
+        exts = ['*']  # 전체 파일 인덱싱
+    else:
+        exts = [e.strip().lower() for e in index_exts_str.split(",") if e.strip()]
     conn = get_conn()
     indexed_files=0
     indexed_chunks=0
@@ -43,7 +65,13 @@ def index_folder(root: str) -> Dict[str, Any]:
     batch_chunks = []
     batch_metadata = []
     
+    # 디버깅: 인덱싱 모드 확인
+    index_all_mode = '*' in exts or 'all' in [e.lower() for e in exts]
+    print(f"[Indexer] Root: {root}, Exts: {exts}, Index All: {index_all_mode}")
+    
+    file_count = 0
     for path in _iter_files(root, exts):
+        file_count += 1
         try:
             st = os.stat(path)
             name=os.path.basename(path)
@@ -59,7 +87,7 @@ def index_folder(root: str) -> Dict[str, Any]:
 
             if row:
                 file_id=row[0]
-                conn.execute("UPDATE files SET name=?, ext=?, size=?, mtime=? WHERE id=?;", (name,ext,size,mtime,file_id))
+                conn.execute("UPDATE files SET name=?, ext=?, size=?, mtime=?, root_path=? WHERE id=?;", (name,ext,size,mtime,root,file_id))
                 # remove old chunks
                 conn.execute("DELETE FROM chunks WHERE file_id=?;", (file_id,))
             else:
@@ -69,18 +97,23 @@ def index_folder(root: str) -> Dict[str, Any]:
 
             indexed_files += 1
 
+            # 텍스트 추출 시도
             text = extract_text(path)
+            # 텍스트가 없어도 파일은 인덱싱 (파일명/경로 검색용)
             if not text:
-                continue
-            chunks = chunk_text(text, settings.chunk_size, settings.chunk_overlap)
-            
-            # chunks를 DB에 저장
-            chunk_ids = []
-            for idx, ch in enumerate(chunks):
-                cur = conn.execute("INSERT INTO chunks(file_id, chunk_index, text) VALUES (?,?,?);",
-                             (file_id, idx, ch))
-                chunk_id = cur.lastrowid
-                chunk_ids.append(chunk_id)
+                # 텍스트가 없는 파일도 메타데이터만 저장
+                # 파일명으로 검색 가능하도록 chunks는 빈 리스트
+                chunks = []
+                chunk_ids = []
+            else:
+                chunks = chunk_text(text, settings.chunk_size, settings.chunk_overlap)
+                # chunks를 DB에 저장
+                chunk_ids = []
+                for idx, ch in enumerate(chunks):
+                    cur = conn.execute("INSERT INTO chunks(file_id, chunk_index, text) VALUES (?,?,?);",
+                                 (file_id, idx, ch))
+                    chunk_id = cur.lastrowid
+                    chunk_ids.append(chunk_id)
             
             indexed_chunks += len(chunks)
             
@@ -112,8 +145,13 @@ def index_folder(root: str) -> Dict[str, Any]:
 
             if indexed_files % 25 == 0:
                 conn.commit()
-        except Exception:
+        except Exception as e:
+            # 오류 로깅 추가 (디버깅용)
+            print(f"[Indexer] Error processing {path}: {str(e)}")
             continue
+    
+    # 디버깅: 발견된 파일 수 출력
+    print(f"[Indexer] Total files found: {file_count}, Indexed: {indexed_files}, Skipped: {skipped}")
 
     # 남은 배치 처리
     if batch_chunks and faiss_store:

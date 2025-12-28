@@ -30,6 +30,18 @@ def init_db():
         root_path TEXT
       );
     """)
+    
+    # 기존 DB 마이그레이션: root_path 컬럼 추가
+    try:
+        cur = conn.execute("PRAGMA table_info(files)")
+        columns = [row[1] for row in cur.fetchall()]
+        if 'root_path' not in columns:
+            print("[DB Migration] Adding root_path column to files table...")
+            conn.execute("ALTER TABLE files ADD COLUMN root_path TEXT")
+            conn.commit()
+            print("[DB Migration] root_path column added successfully")
+    except Exception as e:
+        print(f"[DB Migration] Error: {e}")
     conn.execute("""
       CREATE TABLE IF NOT EXISTS chunks(
         id INTEGER PRIMARY KEY,
