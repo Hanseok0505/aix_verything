@@ -1,0 +1,1 @@
+Variant B: Desktop (run_desktop.py). Launches embedded window.

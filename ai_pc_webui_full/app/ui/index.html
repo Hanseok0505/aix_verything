@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AI PC (Web UI)</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:18px;max-width:980px}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    input,textarea,button{font-size:14px}
+    textarea{width:100%;min-height:64px}
+    button{padding:8px 12px;cursor:pointer}
+    .card{border:1px solid #ddd;border-radius:10px;padding:12px;margin-top:12px}
+    .muted{color:#666;font-size:13px}
+    .paths{white-space:pre-wrap;font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;font-size:12px}
+    .badge{display:inline-block;padding:2px 8px;border:1px solid #ccc;border-radius:999px;font-size:12px;margin-left:6px}
+  </style>
+</head>
+<body>
+  <h2>AI PC (Web UI)</h2>
+  <div class="muted">로컬에서만 실행됩니다. /chat /search /open /index API를 사용합니다.</div>
+
+  <div class="card">
+    <h3>1) Index Folder</h3>
+    <div class="row">
+      <input id="root" style="flex:1;min-width:260px" placeholder="예: C:\Users\me\Documents" />
+      <button onclick="doIndex()">Index</button>
+    </div>
+    <div id="indexStatus" class="muted"></div>
+  </div>
+
+  <div class="card">
+    <h3>2) Chat / Search</h3>
+    <textarea id="q" placeholder="예: 어제 수정한 계약서 파일 열어줘"></textarea>
+    <div class="row">
+      <button onclick="doChat()">Chat</button>
+      <button onclick="doSearch()">Search Only</button>
+    </div>
+    <div id="answer" class="card" style="display:none"></div>
+    <div id="results" class="card" style="display:none"></div>
+  </div>
+
+<script>
+const api = (path) => `${location.origin}${path}`;
+
+async function doIndex(){
+  const root = document.getElementById('root').value.trim();
+  if(!root) return;
+  const el = document.getElementById('indexStatus');
+  el.textContent = "Indexing...";
+  const r = await fetch(api('/index'),{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({root})
+  });
+  const j = await r.json();
+  el.textContent = JSON.stringify(j, null, 2);
+}
+
+function renderResults(items){
+  const box = document.getElementById('results');
+  if(!items || items.length===0){
+    box.style.display='block';
+    box.innerHTML = "<b>Results</b><div class='muted'>No results.</div>";
+    return;
+  }
+  box.style.display='block';
+  box.innerHTML = "<b>Results</b> <span class='badge'>"+items.length+"</span>";
+  const ul = document.createElement('div');
+  ul.className='paths';
+  items.forEach((it, idx)=>{
+    const row = document.createElement('div');
+    const p = it.path || '';
+    row.innerHTML = `${idx+1}. ${p}  `;
+    const b1 = document.createElement('button');
+    b1.textContent = "Open";
+    b1.onclick = ()=>openPath(p);
+    row.appendChild(b1);
+    ul.appendChild(row);
+  });
+  box.appendChild(ul);
+}
+
+async function openPath(path){
+  await fetch(api('/open'),{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({path})
+  });
+}
+
+async function doSearch(){
+  const message = document.getElementById('q').value.trim();
+  if(!message) return;
+  const r = await fetch(api('/search'),{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({message})
+  });
+  const j = await r.json();
+  document.getElementById('answer').style.display='none';
+  renderResults(j.results);
+}
+
+async function doChat(){
+  const message = document.getElementById('q').value.trim();
+  if(!message) return;
+  const r = await fetch(api('/chat'),{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({message})
+  });
+  const j = await r.json();
+  const a = document.getElementById('answer');
+  a.style.display='block';
+  a.innerHTML = "<b>Answer</b><div style='white-space:pre-wrap;margin-top:6px'>"+(j.answer||"")+"</div>";
+  renderResults(j.results||[]);
+  // if action exists, show quick button
+  if(j.action && j.action.path){
+    const btn = document.createElement('button');
+    btn.textContent = "Open suggested path";
+    btn.onclick = ()=>openPath(j.action.path);
+    a.appendChild(document.createElement('div'));
+    a.appendChild(btn);
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,40 @@
+# AI PC 설정 파일
+# 이 파일을 .env로 복사하고 값을 수정하세요
+
+# 모드 선택: "internal" (내부 Proxy API) 또는 "local" (로컬 llama.cpp)
+AI_PC_MODE=internal
+
+# 데이터 디렉토리
+DATA_DIR=./data
+SQLITE_PATH=./data/meta.db
+
+# 인덱싱 설정
+INDEX_EXTS=.txt,.md,.pdf,.docx,.xlsx
+CHUNK_SIZE=900
+CHUNK_OVERLAP=150
+
+# 임베딩 설정 (RAG 활성화)
+ENABLE_EMBEDDINGS=false
+EMBED_MODEL=sentence-transformers/all-MiniLM-L6-v2
+FAISS_DIR=./data/faiss
+
+# 내부 Proxy API 설정 (AI_PC_MODE=internal일 때)
+# Ollama 사용 시:
+# INTERNAL_BASE_URL=http://127.0.0.1:11434/v1
+# INTERNAL_API_KEY=ollama
+# INTERNAL_MODEL=llama3.2
+# 
+# 기타 OpenAI 호환 API:
+INTERNAL_BASE_URL=http://127.0.0.1:4000/v1
+INTERNAL_API_KEY=dummy-key
+INTERNAL_MODEL=internal-llm-chat
+
+# 로컬 LLM 설정 (AI_PC_MODE=local일 때)
+LOCAL_GGUF_PATH=./models/model.gguf
+LOCAL_CTX=4096
+LOCAL_THREADS=8
+
+# 서버 설정
+HOST=127.0.0.1
+PORT=8000
+

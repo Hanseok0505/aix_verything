@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AI PC (Web UI)</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:18px;max-width:980px}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    input,textarea,button{font-size:14px}
+    textarea{width:100%;min-height:64px}
+    button{padding:8px 12px;cursor:pointer}
+    .card{border:1px solid #ddd;border-radius:10px;padding:12px;margin-top:12px}
+    .muted{color:#666;font-size:13px}
+    .paths{white-space:pre-wrap;font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;font-size:12px}
+    .badge{display:inline-block;padding:2px 8px;border:1px solid #ccc;border-radius:999px;font-size:12px;margin-left:6px}
+  </style>
+</head>
+<body>
+  <h2>AI PC (Web UI)</h2>
+  <div class="muted">로컬에서만 실행됩니다. /chat /search /open /index API를 사용합니다.</div>
+
+  <div class="card">
+    <h3>1) Index Folder</h3>
+    <div class="muted" style="margin-bottom:8px">여러 경로를 세미콜론(;)으로 구분하여 입력하세요</div>
+    <div class="row">
+      <textarea id="root" style="flex:1;min-width:260px;min-height:60px" placeholder="예: C:\Users\me\Documents&#10;또는 여러 경로: C:\Users\me\Documents;D:\Projects;E:\Work"></textarea>
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <button onclick="doIndex()">Index</button>
+        <button onclick="selectFolder()" style="font-size:12px">폴더 선택</button>
+        <button onclick="addPath()" style="font-size:12px">경로 추가</button>
+      </div>
+    </div>
+    <div id="indexStatus" class="muted"></div>
+    
+    <div style="margin-top:15px;padding-top:15px;border-top:1px solid #ddd">
+      <h4 style="margin-top:0">인덱싱된 경로</h4>
+      <div id="indexedPaths" class="muted">로딩 중...</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>2) Chat / Search</h3>
+    <textarea id="q" placeholder="예: 어제 수정한 계약서 파일 열어줘"></textarea>
+    <div class="row">
+      <button onclick="doChat()">Chat</button>
+      <button onclick="doSearch()">Search Only</button>
+    </div>
+    <div id="answer" class="card" style="display:none"></div>
+    <div id="results" class="card" style="display:none"></div>
+  </div>
+
+<script>
+const api = (path) => `${location.origin}${path}`;
+
+// 페이지 로드 시 인덱싱된 경로 목록 불러오기
+window.addEventListener('DOMContentLoaded', loadIndexedPaths);
+
+async function loadIndexedPaths(){
+  try {
+    const r = await fetch(api('/indexed-roots'));
+    const j = await r.json();
+    renderIndexedPaths(j.roots || []);
+  } catch(e) {
+    document.getElementById('indexedPaths').innerHTML = '<span style="color:red">오류: ' + e.message + '</span>';
+  }
+}
+
+function renderIndexedPaths(roots){
+  const el = document.getElementById('indexedPaths');
+  if(!roots || roots.length === 0){
+    el.innerHTML = '<div class="muted">인덱싱된 경로가 없습니다.</div>';
+    return;
+  }
+  
+  let html = '<div style="display:flex;flex-direction:column;gap:8px">';
+  roots.forEach(root => {
+    const date = new Date(root.indexed_at * 1000).toLocaleString('ko-KR');
+    html += `
+      <div style="display:flex;align-items:center;gap:10px;padding:8px;background:#f9f9f9;border-radius:4px">
+        <div style="flex:1">
+          <div style="font-weight:bold">${root.root_path}</div>
+          <div style="font-size:12px;color:#666">
+            파일: ${root.file_count} | 청크: ${root.chunk_count} | 인덱싱: ${date}
+          </div>
+        </div>
+        <button onclick="deletePath('${root.root_path.replace(/'/g, "\\'")}')" 
+                style="background:#ff4444;color:white;border:none;padding:4px 8px;border-radius:4px;cursor:pointer"
+                title="삭제">✕</button>
+      </div>
+    `;
+  });
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+async function deletePath(rootPath){
+  if(!confirm(`정말로 "${rootPath}" 경로의 인덱싱 데이터를 삭제하시겠습니까?`)){
+    return;
+  }
+  
+  try {
+    const r = await fetch(api('/delete-path'), {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({root_path: rootPath})
+    });
+    const j = await r.json();
+    if(j.deleted){
+      alert('삭제 완료: ' + j.deleted_files + '개 파일, ' + j.deleted_chunks + '개 청크');
+      loadIndexedPaths(); // 목록 새로고침
+    } else {
+      alert('삭제 실패: ' + (j.error || j.message || '알 수 없는 오류'));
+    }
+  } catch(e) {
+    alert('삭제 중 오류 발생: ' + e.message);
+  }
+}
+
+async function selectFolder(){
+  const statusEl = document.getElementById('indexStatus');
+  const originalText = statusEl.textContent;
+  
+  try {
+    // 로딩 표시
+    statusEl.textContent = '폴더 선택 대화상자를 여는 중... (새 창이 열릴 수 있습니다)';
+    
+    // 타임아웃 설정 (호환성 개선)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120000); // 2분
+    
+    const r = await fetch(api('/select-folder'), {
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if(!r.ok){
+      throw new Error(`서버 오류: ${r.status} ${r.statusText}`);
+    }
+    
+    const j = await r.json();
+    
+    if(j.error){
+      statusEl.innerHTML = '<span style="color:orange">경고: ' + j.error + '<br/>경로를 직접 입력해주세요.</span>';
+      alert('폴더 선택 실패: ' + j.error + '\n\n경로를 직접 입력해주세요.');
+    } else if(j.cancelled){
+      statusEl.textContent = originalText || '';
+      // 취소됨 - 아무것도 하지 않음
+    } else if(j.path){
+      const root = document.getElementById('root');
+      const current = root.value.trim();
+      if(current && !current.endsWith(';')){
+        root.value = current + ';' + j.path;
+      } else {
+        root.value = current + j.path;
+      }
+      statusEl.textContent = '경로가 추가되었습니다: ' + j.path;
+      // 인덱싱된 경로 목록 새로고침
+      loadIndexedPaths();
+    }
+  } catch(e) {
+    if(e.name === 'AbortError'){
+      statusEl.innerHTML = '<span style="color:red">폴더 선택이 시간 초과되었습니다.<br/>경로를 직접 입력해주세요.</span>';
+      alert('폴더 선택이 시간 초과되었습니다.\n\n경로를 직접 입력하거나, 파일 탐색기에서 경로를 복사하여 붙여넣으세요.');
+    } else {
+      statusEl.innerHTML = '<span style="color:red">오류: ' + e.message + '</span>';
+      alert('폴더 선택 중 오류: ' + e.message + '\n\n경로를 직접 입력해주세요.');
+    }
+  }
+}
+
+function addPath(){
+  const root = document.getElementById('root');
+  const current = root.value.trim();
+  if(current && !current.endsWith(';')){
+    root.value = current + ';';
+  }
+  root.focus();
+}
+
+async function doIndex(){
+  const root = document.getElementById('root').value.trim();
+  if(!root) {
+    alert('경로를 입력해주세요');
+    return;
+  }
+  const el = document.getElementById('indexStatus');
+  el.textContent = "Indexing...";
+  try {
+    const r = await fetch(api('/index'),{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({root})
+    });
+    const j = await r.json();
+    if(j.error){
+      el.innerHTML = "<span style='color:red'>오류: " + j.error + "</span>";
+    } else if(j.summary){
+      el.innerHTML = "<b>인덱싱 완료</b><br/>" +
+        "경로 수: " + j.summary.total_roots + "<br/>" +
+        "파일: " + j.summary.total_files + "<br/>" +
+        "청크: " + j.summary.total_chunks + "<br/>" +
+        "벡터: " + j.summary.total_vectors + "<br/>" +
+        "<details><summary>상세 결과</summary><pre>" + JSON.stringify(j.results, null, 2) + "</pre></details>";
+      // 인덱싱된 경로 목록 새로고침
+      loadIndexedPaths();
+    } else {
+      el.textContent = JSON.stringify(j, null, 2);
+    }
+  } catch(e) {
+    el.innerHTML = "<span style='color:red'>오류: " + e.message + "</span>";
+  }
+}
+
+function renderResults(items, snippets=null, ragSnippets=null){
+  const box = document.getElementById('results');
+  if((!items || items.length===0) && (!snippets || snippets.length===0) && (!ragSnippets || ragSnippets.length===0)){
+    box.style.display='block';
+    box.innerHTML = "<b>Results</b><div class='muted'>No results.</div>";
+    return;
+  }
+  box.style.display='block';
+  
+  let html = "<b>Results</b>";
+  if(items && items.length > 0) html += ` <span class='badge'>파일: ${items.length}</span>`;
+  if(snippets && snippets.length > 0) html += ` <span class='badge'>키워드: ${snippets.length}</span>`;
+  if(ragSnippets && ragSnippets.length > 0) html += ` <span class='badge'>의미: ${ragSnippets.length}</span>`;
+  box.innerHTML = html;
+  
+  const ul = document.createElement('div');
+  ul.className='paths';
+  
+  // 파일 결과
+  if(items && items.length > 0){
+    const fileHeader = document.createElement('div');
+    fileHeader.style.marginTop='10px';
+    fileHeader.style.fontWeight='bold';
+    fileHeader.textContent = '파일 검색 결과:';
+    ul.appendChild(fileHeader);
+    
+    items.forEach((it, idx)=>{
+      const row = document.createElement('div');
+      row.style.marginTop='5px';
+      const p = it.path || '';
+      row.innerHTML = `${idx+1}. ${p}  `;
+      const b1 = document.createElement('button');
+      b1.textContent = "Open";
+      b1.onclick = ()=>openPath(p);
+      row.appendChild(b1);
+      ul.appendChild(row);
+    });
+  }
+  
+  // Chunk 결과 (키워드 매칭)
+  if(snippets && snippets.length > 0){
+    const chunkHeader = document.createElement('div');
+    chunkHeader.style.marginTop='15px';
+    chunkHeader.style.fontWeight='bold';
+    chunkHeader.textContent = '내용 검색 결과 (키워드 매칭):';
+    ul.appendChild(chunkHeader);
+    
+    snippets.forEach((it, idx)=>{
+      const row = document.createElement('div');
+      row.style.marginTop='8px';
+      row.style.padding='8px';
+      row.style.backgroundColor='#f5f5f5';
+      row.style.borderRadius='4px';
+      const p = it.path || '';
+      const text = (it.text || '').substring(0, 300);
+      row.innerHTML = `<div><b>${idx+1}. ${p}</b> <button onclick="openPath('${p}')">Open</button></div>` +
+        `<div style='margin-top:4px;font-size:12px;color:#555'>${text}${it.text && it.text.length > 300 ? '...' : ''}</div>`;
+      ul.appendChild(row);
+    });
+  }
+  
+  // RAG 결과 (의미 매칭)
+  if(ragSnippets && ragSnippets.length > 0){
+    const ragHeader = document.createElement('div');
+    ragHeader.style.marginTop='15px';
+    ragHeader.style.fontWeight='bold';
+    ragHeader.textContent = '내용 검색 결과 (의미 매칭):';
+    ul.appendChild(ragHeader);
+    
+    ragSnippets.forEach((it, idx)=>{
+      const row = document.createElement('div');
+      row.style.marginTop='8px';
+      row.style.padding='8px';
+      row.style.backgroundColor='#e8f4f8';
+      row.style.borderRadius='4px';
+      const p = it.path || '';
+      const text = (it.text || '').substring(0, 300);
+      row.innerHTML = `<div><b>${idx+1}. ${p}</b> <button onclick="openPath('${p}')">Open</button></div>` +
+        `<div style='margin-top:4px;font-size:12px;color:#555'>${text}${it.text && it.text.length > 300 ? '...' : ''}</div>`;
+      ul.appendChild(row);
+    });
+  }
+  
+  box.appendChild(ul);
+}
+
+async function openPath(path){
+  await fetch(api('/open'),{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({path})
+  });
+}
+
+async function doSearch(){
+  const message = document.getElementById('q').value.trim();
+  if(!message) return;
+  const r = await fetch(api('/search'),{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({message})
+  });
+  const j = await r.json();
+  document.getElementById('answer').style.display='none';
+  renderResults(j.results);
+}
+
+async function doChat(){
+  const message = document.getElementById('q').value.trim();
+  if(!message) {
+    alert('질문을 입력해주세요');
+    return;
+  }
+  const a = document.getElementById('answer');
+  a.style.display='block';
+  a.innerHTML = "<b>Answer</b><div style='white-space:pre-wrap;margin-top:6px'>처리 중...</div>";
+  
+  try {
+    const r = await fetch(api('/chat'),{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({message})
+    });
+    
+    if(!r.ok){
+      throw new Error(`서버 오류: ${r.status} ${r.statusText}`);
+    }
+    
+    const j = await r.json();
+    
+    // 답변 표시
+    let answerHtml = "<b>Answer</b><div style='white-space:pre-wrap;margin-top:6px'>";
+    if(j.answer){
+      answerHtml += j.answer;
+    } else {
+      answerHtml += "(답변 없음)";
+    }
+    answerHtml += "</div>";
+    
+    // 오류 메시지 확인
+    if(j.error){
+      answerHtml += "<div style='color:red;margin-top:8px'>오류: " + j.error + "</div>";
+    }
+    
+    a.innerHTML = answerHtml;
+    
+    // 결과 표시 (chunk 내용 포함)
+    renderResults(j.results||[], j.snippets||[], j.rag_snippets||[]);
+    
+    // if action exists, show quick button
+    if(j.action && j.action.path){
+      const btn = document.createElement('button');
+      btn.textContent = "Open suggested path";
+      btn.style.marginTop='8px';
+      btn.onclick = ()=>openPath(j.action.path);
+      a.appendChild(document.createElement('div'));
+      a.appendChild(btn);
+    }
+  } catch(e) {
+    a.innerHTML = "<b>Answer</b><div style='color:red;margin-top:6px'>오류 발생: " + e.message + 
+      "<br/><small>내부 API 서버가 실행 중인지 확인하세요. (.env의 INTERNAL_BASE_URL 설정 확인)</small></div>";
+    console.error('Chat error:', e);
+  }
+}
+</script>
+</body>
+</html>
